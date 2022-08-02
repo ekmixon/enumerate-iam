@@ -53,11 +53,7 @@ def extract_service_name(filename, api_json):
 
 
 def is_dangerous(operation_name):
-    for safe in OPERATION_CONTAINS:
-        if safe in operation_name:
-            return False
-
-    return True
+    return all(safe not in operation_name for safe in OPERATION_CONTAINS)
 
 
 def extract_operations(api_json):
@@ -86,8 +82,7 @@ def extract_operations(api_json):
             operations.append(operation_name)
             continue
 
-    operations = list(set(operations))
-    operations.sort()
+    operations = sorted(set(operations))
     return operations
 
 
@@ -97,7 +92,7 @@ def to_underscore(name):
 
 
 def main():
-    bruteforce_tests = dict()
+    bruteforce_tests = {}
 
     for filename in os.listdir(API_DEFINITIONS):
 
@@ -111,7 +106,7 @@ def main():
         service_name = extract_service_name(filename, api_json)
 
         if service_name is None:
-            print('%s does not define a service name' % filename)
+            print(f'{filename} does not define a service name')
             continue
 
         operations = extract_operations(api_json)

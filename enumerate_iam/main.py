@@ -41,10 +41,8 @@ def report_arn(candidate):
     """
     logger = logging.getLogger()
 
-    arn_search = re.search(r'.*(arn:aws:.*?) .*', candidate)
-
-    if arn_search:
-        arn = arn_search.group(1)
+    if arn_search := re.search(r'.*(arn:aws:.*?) .*', candidate):
+        arn = arn_search[1]
 
         arn_id = arn.split(':')[4]
         arn_path = arn.split(':')[5]
@@ -62,7 +60,7 @@ def enumerate_using_bruteforce(access_key, secret_key, session_token, region):
     """
     Attempt to brute-force common describe calls.
     """
-    output = dict()
+    output = {}
 
     logger = logging.getLogger()
     logger.info('Attempting common-service describe / list brute force.')
@@ -115,14 +113,14 @@ def generate_args(access_key, secret_key, session_token, region):
 
 
 def get_client(access_key, secret_key, session_token, service_name, region):
-    key = '%s-%s-%s-%s-%s' % (access_key, secret_key, session_token, service_name, region)
+    key = f'{access_key}-{secret_key}-{session_token}-{service_name}-{region}'
 
     client = CLIENT_POOL.get(key, None)
     if client is not None:
         return client
 
     logger = logging.getLogger()
-    logger.debug('Getting client for %s in region %s' % (service_name, region))
+    logger.debug(f'Getting client for {service_name} in region {region}')
 
     config = Config(connect_timeout=5,
                     read_timeout=5,
@@ -161,10 +159,10 @@ def check_one_permission(arg_tuple):
     except AttributeError:
         # The service might not have this action (this is most likely
         # an error with generate_bruteforce_tests.py)
-        logger.error('Remove %s.%s action' % (service_name, operation_name))
+        logger.error(f'Remove {service_name}.{operation_name} action')
         return
 
-    logger.debug('Testing %s.%s() in region %s' % (service_name, operation_name, region))
+    logger.debug(f'Testing {service_name}.{operation_name}() in region {region}')
 
     try:
         action_response = action_function()
@@ -174,14 +172,14 @@ def check_one_permission(arg_tuple):
             botocore.exceptions.ReadTimeoutError):
         return
     except botocore.exceptions.ParamValidationError:
-        logger.error('Remove %s.%s action' % (service_name, operation_name))
+        logger.error(f'Remove {service_name}.{operation_name} action')
         return
 
     msg = '-- %s.%s() worked!'
     args = (service_name, operation_name)
     logger.info(msg % args)
 
-    key = '%s.%s' % (service_name, operation_name)
+    key = f'{service_name}.{operation_name}'
 
     return key, remove_metadata(action_response)
 
@@ -213,17 +211,21 @@ def enumerate_iam(access_key, secret_key, session_token, region):
     This code provides a mechanism to attempt to validate the permissions assigned
     to a given set of AWS tokens.
     """
-    output = dict()
     configure_logging()
 
-    output['iam'] = enumerate_using_iam(access_key, secret_key, session_token, region)
+    output = {
+        'iam': enumerate_using_iam(
+            access_key, secret_key, session_token, region
+        )
+    }
+
     output['bruteforce'] = enumerate_using_bruteforce(access_key, secret_key, session_token, region)
 
     return output
 
 
 def enumerate_using_iam(access_key, secret_key, session_token, region):
-    output = dict()
+    output = {}
     logger = logging.getLogger()
 
     # Connect to the IAM API and start testing.
@@ -350,10 +352,9 @@ def enumerate_user(iam_client, output):
             # OMG
             logger.warn('Found root credentials!')
             output['root_account'] = True
-            return
         else:
-            logger.error('Unexpected iam.get_user() response: %s' % user)
-            return
+            logger.error(f'Unexpected iam.get_user() response: {user}')
+        return
     else:
         user_name = user['User']['UserName']
 
@@ -394,9 +395,7 @@ def enumerate_user(iam_client, output):
             logger.info('-- Policy "%s"', policy)
 
     # Attempt to get the groups attached to this user.
-    user_groups = dict()
-    user_groups['Groups'] = []
-
+    user_groups = {'Groups': []}
     try:
         user_groups = iam_client.list_groups_for_user(UserName=user_name)
     except botocore.exceptions.ClientError as err:
@@ -411,7 +410,7 @@ def enumerate_user(iam_client, output):
         )
 
     # Attempt to get the group policies
-    output['iam.list_group_policies'] = dict()
+    output['iam.list_group_policies'] = {}
 
     for group in user_groups['Groups']:
         try:

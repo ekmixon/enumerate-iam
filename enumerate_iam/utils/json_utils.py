@@ -28,14 +28,7 @@ def smart_str(s, encoding=DEFAULT_ENCODING, errors='ignore'):
     """
     Return a byte-string version of 's', encoded as specified in 'encoding'.
     """
-    if isinstance(s, unicode):
-        return s.encode(encoding, errors)
-
-    # Already a byte-string, nothing to do here
-    if isinstance(s, str):
-        return s
-
-    return s
+    return s.encode(encoding, errors) if isinstance(s, unicode) else s
 
 
 def json_write(filename, data):
